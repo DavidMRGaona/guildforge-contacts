@@ -22,11 +22,13 @@ use Modules\Contacts\Domain\Enums\InteractionKind;
  * @property InteractionKind $kind
  * @property string $body
  * @property string|null $person_id
+ * @property string|null $agreement_id
  * @property string|null $author_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read OrganizationModel $organization
  * @property-read PersonModel|null $person
+ * @property-read AgreementModel|null $agreement
  * @property-read UserModel|null $author
  */
 final class InteractionModel extends Model
@@ -46,6 +48,7 @@ final class InteractionModel extends Model
         'kind',
         'body',
         'person_id',
+        'agreement_id',
         'author_id',
     ];
 
@@ -71,6 +74,14 @@ final class InteractionModel extends Model
     public function person(): BelongsTo
     {
         return $this->belongsTo(PersonModel::class, 'person_id');
+    }
+
+    /**
+     * @return BelongsTo<AgreementModel, $this>
+     */
+    public function agreement(): BelongsTo
+    {
+        return $this->belongsTo(AgreementModel::class, 'agreement_id');
     }
 
     /**

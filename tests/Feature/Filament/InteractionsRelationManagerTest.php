@@ -12,6 +12,7 @@ use Filament\Actions\Testing\TestAction;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Modules\Contacts\Domain\Enums\AgreementKind;
 use Modules\Contacts\Domain\Enums\InteractionKind;
 use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Filament\RelationManagers\InteractionsRelationManager;
@@ -226,5 +227,38 @@ final class InteractionsRelationManagerTest extends ModuleTestCase
 
         $this->assertTrue($this->managerComponent()->isReadOnly());
         $this->manager()->assertCanSeeTableRecords([$entry])->assertTableActionHidden('delete', $entry);
+    }
+
+    public function test_an_entry_can_be_linked_to_an_agreement_of_this_organization(): void
+    {
+        $agreement = $this->organization->agreements()->create(['title' => 'Descuento', 'kind' => AgreementKind::Discount]);
+
+        $this->manager()
+            ->callAction(TestAction::make('create')->table(), data: ['occurred_on' => '2026-06-01', 'kind' => InteractionKind::Call->value, 'body' => 'Renovamos', 'agreement_id' => $agreement->id])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('contacts_interactions', ['body' => 'Renovamos', 'agreement_id' => $agreement->id]);
+    }
+
+    public function test_an_agreement_of_another_organization_is_refused(): void
+    {
+        $foreign = OrganizationModel::create(['name' => 'Otra', 'type' => OrganizationType::Other])
+            ->agreements()->create(['title' => 'Ajeno', 'kind' => AgreementKind::Other]);
+
+        $this->manager()
+            ->callAction(TestAction::make('create')->table(), data: ['occurred_on' => '2026-06-01', 'kind' => InteractionKind::Call->value, 'body' => 'X', 'agreement_id' => $foreign->id])
+            ->assertHasActionErrors(['agreement_id']);
+
+        $this->assertDatabaseMissing('contacts_interactions', ['body' => 'X']);
+    }
+
+    public function test_deleting_the_agreement_keeps_the_entry_without_it(): void
+    {
+        $agreement = $this->organization->agreements()->create(['title' => 'Descuento', 'kind' => AgreementKind::Discount]);
+        $entry = $this->organization->interactions()->create(['occurred_on' => '2026-06-01', 'kind' => InteractionKind::Call, 'body' => 'Hola', 'agreement_id' => $agreement->id]);
+
+        $agreement->delete();
+
+        $this->assertNull($entry->refresh()->agreement_id);
     }
 }
