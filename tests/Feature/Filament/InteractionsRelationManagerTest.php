@@ -194,7 +194,7 @@ final class InteractionsRelationManagerTest extends ModuleTestCase
         $author = UserModel::factory()->create();
         $entry = $this->entry(['author_id' => $author->id]);
 
-        $author->delete();
+        $author->forceDelete();
 
         $this->assertDatabaseHas('contacts_interactions', ['id' => $entry->id, 'author_id' => null]);
     }
