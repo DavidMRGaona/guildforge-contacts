@@ -32,6 +32,7 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
  * @property-read Collection<int, PersonModel> $people
  * @property-read Collection<int, InteractionModel> $interactions
  * @property-read Collection<int, AgreementModel> $agreements
+ * @property-read Collection<int, LinkModel> $links
  */
 final class OrganizationModel extends Model
 {
@@ -89,6 +90,17 @@ final class OrganizationModel extends Model
     public function agreements(): HasMany
     {
         return $this->hasMany(AgreementModel::class, 'organization_id');
+    }
+
+    /**
+     * Records linked to the organization itself. Those linked to one of its agreements hang from
+     * the agreement (AgreementModel::links()); deleting the organization deletes both.
+     *
+     * @return HasMany<LinkModel, $this>
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(LinkModel::class, 'organization_id')->whereNull('agreement_id');
     }
 
     /**

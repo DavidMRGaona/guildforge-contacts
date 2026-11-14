@@ -9,14 +9,18 @@ use App\Application\Modules\DTOs\PermissionDTO;
 use App\Modules\ModuleServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 use Modules\Contacts\Application\Services\OrganizationArchiveServiceInterface;
+use Modules\Contacts\Application\Services\RecordLinkServiceInterface;
 use Modules\Contacts\Console\Commands\SendAgreementReviewsCommand;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
+use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\LinkModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\PersonModel;
 use Modules\Contacts\Infrastructure\Services\OrganizationArchiveService;
+use Modules\Contacts\Infrastructure\Services\RecordLinkService;
 use Modules\Contacts\Policies\AgreementPolicy;
 use Modules\Contacts\Policies\InteractionPolicy;
+use Modules\Contacts\Policies\LinkPolicy;
 use Modules\Contacts\Policies\OrganizationPolicy;
 use Modules\Contacts\Policies\PersonPolicy;
 
@@ -41,6 +45,9 @@ final class ContactsServiceProvider extends ModuleServiceProvider
         parent::register();
 
         $this->app->bind(OrganizationArchiveServiceInterface::class, OrganizationArchiveService::class);
+
+        // Links to records of other modules, read through the core's linkable record lookup
+        $this->app->bind(RecordLinkServiceInterface::class, RecordLinkService::class);
     }
 
     /**
@@ -53,6 +60,7 @@ final class ContactsServiceProvider extends ModuleServiceProvider
             PersonModel::class => PersonPolicy::class,
             InteractionModel::class => InteractionPolicy::class,
             AgreementModel::class => AgreementPolicy::class,
+            LinkModel::class => LinkPolicy::class,
         ];
     }
 

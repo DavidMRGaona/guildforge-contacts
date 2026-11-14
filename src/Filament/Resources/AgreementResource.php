@@ -9,6 +9,7 @@ use App\Filament\Support\PanelNavigationGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Modules\Contacts\Filament\RelationManagers\LinksRelationManager;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\CreateAgreement;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\EditAgreement;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\ListAgreements;
@@ -77,6 +78,16 @@ class AgreementResource extends BaseResource
             ->filters(AgreementTable::filters())
             ->recordActions(AgreementTable::recordActions())
             ->defaultSort('review_on');
+    }
+
+    /**
+     * Records linked to the agreement (the room lent for an event…), below its form.
+     */
+    public static function getRelations(): array
+    {
+        return [
+            LinksRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

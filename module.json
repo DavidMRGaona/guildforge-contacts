@@ -5,10 +5,10 @@
     "repository": "DavidMRGaona/guildforge-contacts",
     "namespace": "Modules\\Contacts",
     "provider": "ContactsServiceProvider",
-    "description": "Contactos de la asociación: organizaciones, personas, historial y acuerdos",
+    "description": "Contactos de la asociación: organizaciones, personas, historial, acuerdos y vínculos con otros registros del sitio",
     "author": "GuildForge",
     "requires": {
-        "core": "^3.66",
+        "core": "^3.68",
         "php": ">=8.5",
         "laravel": ">=13.0",
         "filament": "^5.0"
