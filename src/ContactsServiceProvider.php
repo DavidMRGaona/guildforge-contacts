@@ -7,13 +7,13 @@ namespace Modules\Contacts;
 use App\Application\Modules\DTOs\PermissionDTO;
 use App\Modules\ModuleServiceProvider;
 use Modules\Contacts\Application\Services\OrganizationArchiveServiceInterface;
-use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
+use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\PersonModel;
 use Modules\Contacts\Infrastructure\Services\OrganizationArchiveService;
-use Modules\Contacts\Policies\InteractionPolicy;
 use Modules\Contacts\Policies\AgreementPolicy;
+use Modules\Contacts\Policies\InteractionPolicy;
 use Modules\Contacts\Policies\OrganizationPolicy;
 use Modules\Contacts\Policies\PersonPolicy;
 
