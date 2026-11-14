@@ -17,7 +17,7 @@ Quien tiene permiso para **ver** contactos lo ve todo sin poder cambiarlo. Para 
 
 ## Organizaciones y personas
 
-Cada organización tiene un **Tipo** (proveedor, tienda, asociación, institución, patrocinador, medio de comunicación u otro) y, en su página, la pestaña **Personas de contacto** con quien atiende a la asociación allí.
+Cada organización tiene un **Tipo** (proveedor, tienda, asociación, institución, patrocinador, medio de comunicación u otro) y las **Personas de contacto**: quien atiende a la asociación allí. Se pueden añadir al crear la organización, en la sección **Personas de contacto** del formulario, o más tarde en la pestaña **Personas de contacto** de su página, que es donde se editan después.
 
 La lista se puede filtrar por **Tipo** y por **Estado**.
 

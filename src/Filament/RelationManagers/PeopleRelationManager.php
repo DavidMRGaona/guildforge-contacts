@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -53,35 +54,46 @@ class PeopleRelationManager extends RelationManager
         return __('contacts::contacts.model.person.plural');
     }
 
+    /**
+     * The fields of a contact person, shared by the tab and by the repeater of the creation form, so both
+     * validate the same way.
+     *
+     * @return list<Component>
+     */
+    public static function personFields(): array
+    {
+        return [
+            TextInput::make('name')
+                ->label(__('contacts::contacts.fields.name'))
+                ->required()
+                ->maxLength(255),
+
+            TextInput::make('role')
+                ->label(__('contacts::contacts.fields.role'))
+                ->maxLength(255),
+
+            TextInput::make('email')
+                ->label(__('contacts::contacts.fields.email'))
+                ->email()
+                ->maxLength(255),
+
+            TextInput::make('phone')
+                ->label(__('contacts::contacts.fields.phone'))
+                ->tel()
+                ->maxLength(40),
+
+            Textarea::make('notes')
+                ->label(__('contacts::contacts.fields.notes'))
+                ->rows(3)
+                ->maxLength(2000)
+                ->columnSpanFull(),
+        ];
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                TextInput::make('name')
-                    ->label(__('contacts::contacts.fields.name'))
-                    ->required()
-                    ->maxLength(255),
-
-                TextInput::make('role')
-                    ->label(__('contacts::contacts.fields.role'))
-                    ->maxLength(255),
-
-                TextInput::make('email')
-                    ->label(__('contacts::contacts.fields.email'))
-                    ->email()
-                    ->maxLength(255),
-
-                TextInput::make('phone')
-                    ->label(__('contacts::contacts.fields.phone'))
-                    ->tel()
-                    ->maxLength(40),
-
-                Textarea::make('notes')
-                    ->label(__('contacts::contacts.fields.notes'))
-                    ->rows(3)
-                    ->maxLength(2000)
-                    ->columnSpanFull(),
-            ])
+            ->components(self::personFields())
             ->columns(2);
     }
 

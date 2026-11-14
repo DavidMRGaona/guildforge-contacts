@@ -17,7 +17,8 @@ Estos pasos son para quien puede **gestionar** contactos. Qué es cada cosa y c�
 
 1. En **Contactos** pulsa **Nueva organización**.
 2. Pon el nombre y el **Tipo** (proveedor, tienda, asociación, institución, patrocinador, medio de comunicación u otro). Rellena solo lo que sepas: sitio web, correo, teléfono, dirección y notas.
-3. Guarda. En la página de la organización, la pestaña **Personas de contacto** guarda a quien atiende a la asociación allí, con su cargo, correo, teléfono y notas.
+3. Si quieres, en la sección **Personas de contacto** pulsa **Añadir persona** por cada una (nombre obligatorio; cargo, correo, teléfono y notas son opcionales). Se guardan junto con la organización: si algo falla, no se guarda nada.
+4. Guarda. Más adelante, las personas se añaden, cambian o borran en la pestaña **Personas de contacto** de la página de la organización, que es el único sitio donde se editan.
 
 ## Archivar o borrar
 

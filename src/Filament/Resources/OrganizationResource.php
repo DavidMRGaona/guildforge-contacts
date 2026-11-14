@@ -9,6 +9,7 @@ use App\Filament\Resources\BaseResource;
 use App\Filament\Support\PanelNavigationGroup;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -66,6 +67,33 @@ class OrganizationResource extends BaseResource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
+            ...self::organizationSections(),
+
+            // Only when creating: afterwards the «Personas» tab is the single place where people are managed
+            Section::make(__('contacts::contacts.sections.people'))
+                ->description(__('contacts::contacts.sections.people_description'))
+                ->visibleOn('create')
+                ->schema([
+                    Repeater::make('people')
+                        ->hiddenLabel()
+                        ->schema(PeopleRelationManager::personFields())
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->addActionLabel(__('contacts::contacts.relation_managers.people.create'))
+                        ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? (string) $state['name'] : null)
+                        ->collapsible(),
+                ]),
+        ]);
+    }
+
+    /**
+     * The sections of the organization's own data.
+     *
+     * @return list<Section>
+     */
+    public static function organizationSections(): array
+    {
+        return [
             Section::make(__('contacts::contacts.sections.data'))
                 ->schema([
                     TextInput::make('name')
@@ -111,7 +139,7 @@ class OrganizationResource extends BaseResource
                         ->maxLength(1000),
                 ])
                 ->columns(2),
-        ]);
+        ];
     }
 
     public static function table(Table $table): Table
