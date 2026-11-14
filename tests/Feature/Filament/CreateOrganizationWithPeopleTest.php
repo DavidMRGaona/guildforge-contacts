@@ -104,10 +104,37 @@ final class CreateOrganizationWithPeopleTest extends ModuleTestCase
         $this->assertSame(0, PersonModel::query()->count());
     }
 
+    public function test_forged_extra_keys_in_a_person_are_ignored(): void
+    {
+        $other = OrganizationModel::create(['name' => 'Otra', 'type' => OrganizationType::Shop]);
+        $forgedId = '0190f000-0000-7000-8000-000000000001';
+
+        Livewire::test(CreateOrganization::class)
+            ->fillForm($this->organizationData())
+            ->set('data.people', [[
+                'name' => 'Ana Pérez',
+                'id' => $forgedId,
+                'organization_id' => $other->id,
+                'created_at' => '2000-01-01 00:00:00',
+            ]])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $organization = OrganizationModel::query()->where('name', 'Club de rol')->firstOrFail();
+        $person = PersonModel::query()->where('name', 'Ana Pérez')->firstOrFail();
+        $this->assertSame($organization->id, $person->organization_id);
+        $this->assertNotSame($forgedId, $person->id);
+        $this->assertNotSame('2000', $person->created_at?->format('Y'));
+        $this->assertSame(0, $other->people()->count());
+    }
+
     public function test_a_failure_saving_a_person_leaves_nothing_behind(): void
     {
-        PersonModel::creating(static function (): never {
-            throw new \RuntimeException('boom');
+        $armed = true;
+        PersonModel::creating(static function () use (&$armed): void {
+            if ($armed) {
+                throw new \RuntimeException('boom');
+            }
         });
 
         try {
@@ -118,18 +145,29 @@ final class CreateOrganizationWithPeopleTest extends ModuleTestCase
         } catch (\RuntimeException $e) {
             $this->assertSame('boom', $e->getMessage());
         } finally {
-            PersonModel::flushEventListeners();
+            // Only this test's listener goes quiet; other listeners stay registered
+            $armed = false;
         }
 
         $this->assertSame(0, OrganizationModel::query()->count());
+        $this->assertSame(0, PersonModel::query()->count());
     }
 
     public function test_the_edit_page_has_no_people_repeater(): void
     {
         $organization = OrganizationModel::create(['name' => 'Tienda', 'type' => OrganizationType::Shop]);
+        $existing = $organization->people()->create(['name' => 'Luis Gil']);
 
         Livewire::test(CreateOrganization::class)->assertFormFieldExists('people');
-        Livewire::test(EditOrganization::class, ['record' => $organization->getRouteKey()])->assertFormFieldDoesNotExist('people');
+        Livewire::test(EditOrganization::class, ['record' => $organization->getRouteKey()])
+            ->assertFormFieldDoesNotExist('people')
+            ->set('data.people', [['name' => 'Forjada', 'organization_id' => $organization->id]])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(1, PersonModel::query()->count());
+        $this->assertSame(['Luis Gil'], PersonModel::query()->pluck('name')->all());
+        $this->assertSame($existing->id, PersonModel::query()->firstOrFail()->id);
     }
 
     public function test_someone_who_cannot_manage_contacts_cannot_create(): void
