@@ -1,7 +1,7 @@
 {
   "name": "contacts",
   "displayName": "Contactos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": "DavidMRGaona/guildforge-contacts",
   "namespace": "Modules\\Contacts",
   "provider": "ContactsServiceProvider",
