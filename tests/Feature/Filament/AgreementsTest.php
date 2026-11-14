@@ -8,6 +8,8 @@ use App\Application\Services\TimezoneServiceInterface;
 use App\Filament\Actions\RowDetailsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -79,6 +81,14 @@ final class AgreementsTest extends ModuleTestCase
         $this->assertInstanceOf(AgreementsRelationManager::class, $component);
 
         return $component;
+    }
+
+    private function listTable(): Table
+    {
+        $component = Livewire::test(ListAgreements::class)->instance();
+        $this->assertInstanceOf(HasTable::class, $component);
+
+        return $component->getTable();
     }
 
     public function test_agreements_is_a_child_entry_of_contacts(): void
@@ -199,7 +209,7 @@ final class AgreementsTest extends ModuleTestCase
         $future = $this->agreement(['review_on' => '2099-01-01']);
         $ended = $this->agreement(['review_on' => $this->yesterday(), 'status' => AgreementStatus::Ended]);
 
-        $column = Livewire::test(ListAgreements::class)->instance()->getTable()->getColumn('review_on');
+        $column = $this->listTable()->getColumn('review_on');
         $this->assertNotNull($column);
 
         $this->assertSame('danger', $column->record($due)->getColor(null));
@@ -225,7 +235,7 @@ final class AgreementsTest extends ModuleTestCase
 
     public function test_the_row_menu_is_one_group_starting_with_row_details(): void
     {
-        foreach ([$this->managerComponent()->getTable(), Livewire::test(ListAgreements::class)->instance()->getTable()] as $table) {
+        foreach ([$this->managerComponent()->getTable(), $this->listTable()] as $table) {
             $actions = $table->getRecordActions();
 
             $this->assertCount(1, $actions);
@@ -236,7 +246,7 @@ final class AgreementsTest extends ModuleTestCase
 
     public function test_secondary_columns_show_only_from_the_width_where_they_fit(): void
     {
-        $table = Livewire::test(ListAgreements::class)->instance()->getTable();
+        $table = $this->listTable();
 
         $expected = ['title' => null, 'status' => null, 'organization.name' => 'sm', 'review_on' => 'sm', 'kind' => 'md', 'responsible.name' => 'xl'];
         foreach ($expected as $name => $breakpoint) {

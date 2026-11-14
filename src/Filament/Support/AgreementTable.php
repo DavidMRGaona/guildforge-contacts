@@ -8,7 +8,6 @@ use App\Application\Services\TimezoneServiceInterface;
 use App\Filament\Actions\RowDetailsAction;
 use App\Infrastructure\Authorization\Services\PermissionHolderFinder;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
-use Closure;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -83,7 +82,7 @@ final class AgreementTable
                 ->searchable()
                 ->native(false)
                 // Checked again on save: a forged id, or an account that lost the permission, is refused
-                ->rule(self::mustHoldManage())
+                ->in(fn (): array => array_keys(self::responsibleOptions()))
                 ->validationMessages(['in' => __('contacts::contacts.validation.responsible')]),
 
             TextInput::make('document_url')
@@ -124,19 +123,6 @@ final class AgreementTable
         $displayName = $user->display_name;
 
         return is_string($displayName) && $displayName !== '' ? $displayName : $user->name;
-    }
-
-    private static function mustHoldManage(): Closure
-    {
-        return static function (string $attribute, mixed $value, Closure $fail): void {
-            if ($value === null || $value === '') {
-                return;
-            }
-
-            if (! array_key_exists((string) $value, self::responsibleOptions())) {
-                $fail(__('contacts::contacts.validation.responsible'));
-            }
-        };
     }
 
     /**
@@ -208,7 +194,12 @@ final class AgreementTable
             Filter::make('review_due')
                 ->label(__('contacts::contacts.filters.review_due'))
                 ->toggle()
-                ->query(fn (Builder $query): Builder => $query->reviewDue(app(TimezoneServiceInterface::class)->today())),
+                ->query(function (Builder $query): Builder {
+                    /** @var Builder<AgreementModel> $query */
+                    $query->reviewDue(app(TimezoneServiceInterface::class)->today());
+
+                    return $query;
+                }),
         ];
     }
 
