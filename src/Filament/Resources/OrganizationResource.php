@@ -22,6 +22,7 @@ use Modules\Contacts\Domain\Enums\OrganizationStatus;
 use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Filament\Actions\ContactActions;
 use Modules\Contacts\Filament\RelationManagers\InteractionsRelationManager;
+use Modules\Contacts\Filament\RelationManagers\AgreementsRelationManager;
 use Modules\Contacts\Filament\RelationManagers\PeopleRelationManager;
 use Modules\Contacts\Filament\Resources\OrganizationResource\Pages\CreateOrganization;
 use Modules\Contacts\Filament\Resources\OrganizationResource\Pages\EditOrganization;
@@ -194,6 +195,7 @@ class OrganizationResource extends BaseResource
         return [
             PeopleRelationManager::class,
             InteractionsRelationManager::class,
+            AgreementsRelationManager::class,
         ];
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'navigation' => [
         'contacts' => 'Contactos',
+        'agreements' => 'Acuerdos',
     ],
 
     'model' => [
@@ -20,12 +21,19 @@ return [
             'singular' => 'entrada del historial',
             'plural' => 'entradas del historial',
         ],
+        'agreement' => [
+            'singular' => 'acuerdo',
+            'plural' => 'Acuerdos',
+        ],
     ],
 
     'pages' => [
         'create_organization' => 'Nueva organización',
         'edit_organization' => 'Editar organización',
         'view_organization' => 'Organización',
+        'create_agreement' => 'Nuevo acuerdo',
+        'edit_agreement' => 'Editar acuerdo',
+        'view_agreement' => 'Acuerdo',
     ],
 
     'sections' => [
@@ -44,11 +52,33 @@ return [
         'notes' => 'Notas',
         'role' => 'Cargo',
         'people_count' => 'Personas',
+        'title' => 'Título',
+        'organization' => 'Organización',
+        'kind' => 'Tipo',
+        'starts_on' => 'Fecha de inicio',
+        'ends_on' => 'Fecha de fin',
+        'review_on' => 'Revisión',
+        'responsible' => 'Responsable',
+        'document_url' => 'Enlace al documento',
+        'conditions' => 'Condiciones',
     ],
 
     'filters' => [
         'type' => 'Tipo',
         'status' => 'Estado',
+        'kind' => 'Tipo de acuerdo',
+        'review_due' => 'Revisión pendiente',
+    ],
+
+    'hints' => [
+        'review_on' => 'Cuándo conviene volver a mirar el acuerdo. Se avisa una vez por fecha; poner una nueva es el gesto de «lo he revisado».',
+        'responsible' => 'Solo personas con permiso para gestionar contactos.',
+        'document_url' => 'Enlace seguro (https) al documento firmado o a la carpeta donde está.',
+    ],
+
+    'validation' => [
+        'responsible' => 'Elige a una persona que pueda gestionar contactos.',
+        'document_url' => 'El enlace debe empezar por https://.',
     ],
 
     'enums' => [
@@ -72,6 +102,18 @@ return [
             'message' => 'Mensaje',
             'other' => 'Otro',
         ],
+        'agreement_kind' => [
+            'discount' => 'Descuento',
+            'space' => 'Cesión de espacio',
+            'sponsorship' => 'Patrocinio',
+            'collaboration' => 'Colaboración',
+            'other' => 'Otro',
+        ],
+        'agreement_status' => [
+            'active' => 'Activo',
+            'paused' => 'En pausa',
+            'ended' => 'Terminado',
+        ],
     ],
 
     'actions' => [
@@ -93,6 +135,9 @@ return [
         'person_heading' => 'Borrar la persona de contacto',
         'person_description' => 'Se borrará del todo. Sus entradas del historial se quedan sin persona, pero el texto libre del historial puede seguir nombrándola.',
         'person_check' => 'Entiendo que se borrará del todo y que no se puede deshacer',
+        'agreement_heading' => 'Borrar el acuerdo',
+        'agreement_description' => 'Se borrará el acuerdo con sus condiciones y fechas, y no se podrá recuperar. Si ya no está vigente, márcalo como terminado: se conserva.',
+        'agreement_check' => 'Entiendo que se borrará del todo y que no se puede deshacer',
     ],
 
     'interaction' => [
@@ -118,6 +163,12 @@ return [
             'empty_state_description' => 'Anota reuniones, llamadas y mensajes para que la relación no dependa de la memoria de nadie.',
             'delete_heading' => 'Borrar la entrada del historial',
             'delete_description' => 'Se borrará del todo y no se podrá recuperar.',
+        ],
+        'agreements' => [
+            'title' => 'Acuerdos',
+            'create' => 'Añadir acuerdo',
+            'empty_state' => 'Sin acuerdos',
+            'empty_state_description' => 'Anota aquí lo que se acuerde con esta organización y cuándo conviene revisarlo.',
         ],
     ],
 ];

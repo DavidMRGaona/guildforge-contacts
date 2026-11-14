@@ -70,8 +70,16 @@ final class ContactActions
         );
     }
 
+    public static function deleteAgreement(): DeleteAction
+    {
+        return self::withSecondConfirmation(
+            DeleteAction::make(),
+            'agreement',
+        );
+    }
+
     /**
-     * @param  'organization'|'person'  $subject
+     * @param  'organization'|'person'|'agreement'  $subject
      */
     private static function withSecondConfirmation(DeleteAction $action, string $subject): DeleteAction
     {
