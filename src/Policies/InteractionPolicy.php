@@ -8,7 +8,7 @@ use App\Infrastructure\Authorization\Policies\AuthorizesWithPermissions;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
 
-final class PersonPolicy
+final class InteractionPolicy
 {
     use AuthorizesWithPermissions;
 
