@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Filament\Resources\AgreementResource\Pages;
 
+use App\Filament\Concerns\HasKnowledgeGuideAction;
 use Filament\Resources\Pages\EditRecord;
 use Modules\Contacts\Filament\Actions\ContactActions;
 use Modules\Contacts\Filament\Resources\AgreementResource;
 
 class EditAgreement extends EditRecord
 {
+    use HasKnowledgeGuideAction;
+
     protected static string $resource = AgreementResource::class;
 
     public function getTitle(): string
@@ -34,6 +37,7 @@ class EditAgreement extends EditRecord
     {
         return [
             ContactActions::deleteAgreement(),
+            ...array_filter([$this->knowledgeGuideAction('contacts.panel.contacts')]),
         ];
     }
 }
