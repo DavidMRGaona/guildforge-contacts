@@ -73,6 +73,8 @@ return [
     'hints' => [
         'review_on' => 'Cuándo conviene volver a mirar el acuerdo. Se avisa una vez por fecha; poner una nueva es el gesto de «lo he revisado».',
         'responsible' => 'Solo personas con permiso para gestionar contactos.',
+        'responsible_lost' => ':name ya no puede gestionar contactos. Los avisos de revisión van a todas las personas que sí pueden; elige a otra persona si quieres que vuelva a haber un responsable.',
+        'responsible_lost_option' => ':name (sin permiso)',
         'document_url' => 'Enlace seguro (https) al documento firmado o a la carpeta donde está.',
     ],
 

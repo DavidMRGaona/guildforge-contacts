@@ -6,7 +6,6 @@ namespace Modules\Contacts\Filament\Support;
 
 use App\Application\Services\TimezoneServiceInterface;
 use App\Filament\Actions\RowDetailsAction;
-use App\Infrastructure\Authorization\Services\PermissionHolderFinder;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -19,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Modules\Contacts\Domain\Enums\AgreementKind;
 use Modules\Contacts\Domain\Enums\AgreementStatus;
 use Modules\Contacts\Filament\Actions\ContactActions;
@@ -30,8 +30,6 @@ use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
  */
 final class AgreementTable
 {
-    private const string MANAGE = 'contacts:contacts.manage';
-
     /**
      * @return array<int, Component>
      */
@@ -77,12 +75,13 @@ final class AgreementTable
 
             Select::make('responsible_id')
                 ->label(__('contacts::contacts.fields.responsible'))
-                ->helperText(__('contacts::contacts.hints.responsible'))
-                ->options(fn (): array => self::responsibleOptions())
+                ->helperText(fn (?Model $record): string => self::responsibleHint($record))
+                ->options(fn (?Model $record): array => self::responsibleOptionsFor($record))
                 ->searchable()
                 ->native(false)
-                // Checked again on save: a forged id, or an account that lost the permission, is refused
-                ->in(fn (): array => array_keys(self::responsibleOptions()))
+                // Checked again on save: a forged id or a newly chosen account without the permission is
+                // refused, but the value already stored stays valid so unrelated edits are not blocked
+                ->in(fn (?Model $record): array => array_keys(self::responsibleOptionsFor($record)))
                 ->validationMessages(['in' => __('contacts::contacts.validation.responsible')]),
 
             TextInput::make('document_url')
@@ -103,26 +102,59 @@ final class AgreementTable
     }
 
     /**
-     * Accounts that may manage contacts: the only ones that can be responsible for an agreement.
+     * Accounts that may manage contacts: the only ones that can be newly chosen as responsible.
      *
      * @return array<string, string> id => name
      */
     public static function responsibleOptions(): array
     {
-        $options = [];
+        return app(ResponsibleCandidates::class)->options();
+    }
 
-        foreach (app(PermissionHolderFinder::class)->usersWhoCan(self::MANAGE) as $user) {
-            $options[(string) $user->getKey()] = self::userName($user);
+    /**
+     * The candidates plus the responsible already stored on the record, even when it lost the
+     * permission, so the select does not show empty and a save that leaves it alone passes.
+     *
+     * @return array<string, string>
+     */
+    private static function responsibleOptionsFor(?Model $record): array
+    {
+        $options = self::responsibleOptions();
+        $stored = self::storedResponsible($record);
+
+        if ($stored instanceof UserModel && ! array_key_exists((string) $stored->getKey(), $options)) {
+            $options[(string) $stored->getKey()] = __('contacts::contacts.hints.responsible_lost_option', ['name' => self::userName($stored)]);
         }
 
         return $options;
     }
 
+    private static function responsibleHint(?Model $record): string
+    {
+        $stored = self::storedResponsible($record);
+
+        if ($stored instanceof UserModel && ! app(ResponsibleCandidates::class)->holds((string) $stored->getKey())) {
+            return __('contacts::contacts.hints.responsible_lost', ['name' => self::userName($stored)]);
+        }
+
+        return __('contacts::contacts.hints.responsible');
+    }
+
+    /**
+     * The responsible as stored, never the form's pending state.
+     */
+    private static function storedResponsible(?Model $record): ?UserModel
+    {
+        if (! $record instanceof AgreementModel || $record->getRawOriginal('responsible_id') === null) {
+            return null;
+        }
+
+        return UserModel::query()->whereKey($record->getRawOriginal('responsible_id'))->first();
+    }
+
     public static function userName(UserModel $user): string
     {
-        $displayName = $user->display_name;
-
-        return is_string($displayName) && $displayName !== '' ? $displayName : $user->name;
+        return ResponsibleCandidates::userName($user);
     }
 
     /**

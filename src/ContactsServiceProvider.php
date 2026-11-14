@@ -11,6 +11,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Modules\Contacts\Application\Services\OrganizationArchiveServiceInterface;
 use Modules\Contacts\Application\Services\RecordLinkServiceInterface;
 use Modules\Contacts\Console\Commands\SendAgreementReviewsCommand;
+use Modules\Contacts\Filament\Support\ResponsibleCandidates;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\LinkModel;
@@ -45,6 +46,7 @@ final class ContactsServiceProvider extends ModuleServiceProvider
         parent::register();
 
         $this->app->bind(OrganizationArchiveServiceInterface::class, OrganizationArchiveService::class);
+        $this->app->scoped(ResponsibleCandidates::class);
 
         // Links to records of other modules, read through the core's linkable record lookup
         $this->app->bind(RecordLinkServiceInterface::class, RecordLinkService::class);

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use LogicException;
 use Modules\Contacts\Domain\Enums\AgreementKind;
 use Modules\Contacts\Domain\Enums\AgreementStatus;
 
@@ -68,6 +69,17 @@ final class AgreementModel extends Model
     protected $attributes = [
         'status' => 'active',
     ];
+
+    protected static function booted(): void
+    {
+        // History entries and links store the organization next to the agreement: moving it would
+        // leave them pointing across organizations
+        self::updating(static function (self $agreement): void {
+            if ($agreement->isDirty('organization_id')) {
+                throw new LogicException('An agreement cannot move to another organization.');
+            }
+        });
+    }
 
     protected function casts(): array
     {
