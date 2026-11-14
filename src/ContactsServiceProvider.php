@@ -6,6 +6,12 @@ namespace Modules\Contacts;
 
 use App\Application\Modules\DTOs\PermissionDTO;
 use App\Modules\ModuleServiceProvider;
+use Modules\Contacts\Application\Services\OrganizationArchiveServiceInterface;
+use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
+use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\PersonModel;
+use Modules\Contacts\Infrastructure\Services\OrganizationArchiveService;
+use Modules\Contacts\Policies\OrganizationPolicy;
+use Modules\Contacts\Policies\PersonPolicy;
 
 /**
  * Contacts of the association (organizations, people, history and agreements).
@@ -19,6 +25,24 @@ final class ContactsServiceProvider extends ModuleServiceProvider
     public function moduleName(): string
     {
         return 'contacts';
+    }
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(OrganizationArchiveServiceInterface::class, OrganizationArchiveService::class);
+    }
+
+    /**
+     * @return array<class-string, class-string>
+     */
+    public function registerPolicies(): array
+    {
+        return [
+            OrganizationModel::class => OrganizationPolicy::class,
+            PersonModel::class => PersonPolicy::class,
+        ];
     }
 
     /**
