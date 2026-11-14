@@ -8,6 +8,7 @@ use App\Application\Services\TimezoneServiceInterface;
 use App\Filament\Actions\RowDetailsAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Livewire\Component;
@@ -210,7 +211,7 @@ final class AgreementsTest extends ModuleTestCase
         $ended = $this->agreement(['review_on' => $this->yesterday(), 'status' => AgreementStatus::Ended]);
 
         $column = $this->listTable()->getColumn('review_on');
-        $this->assertNotNull($column);
+        $this->assertInstanceOf(TextColumn::class, $column);
 
         $this->assertSame('danger', $column->record($due)->getColor(null));
         $this->assertSame('danger', $column->record($today)->getColor(null));
@@ -254,7 +255,9 @@ final class AgreementsTest extends ModuleTestCase
             $this->assertNotNull($column, $name);
             $this->assertSame($breakpoint, $column->getVisibleFrom(), $name);
         }
-        $this->assertTrue($table->getColumn('title')?->canWrap());
+        $title = $table->getColumn('title');
+        $this->assertInstanceOf(TextColumn::class, $title);
+        $this->assertTrue($title->canWrap());
     }
 
     public function test_someone_who_only_views_cannot_change_agreements(): void
