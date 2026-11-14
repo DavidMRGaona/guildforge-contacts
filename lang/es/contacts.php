@@ -147,6 +147,8 @@ return [
         'author' => 'Autor',
         'body' => 'Qué se habló',
         'no_person' => 'Sin persona concreta',
+        'agreement' => 'Acuerdo',
+        'no_agreement' => 'Sin acuerdo concreto',
     ],
 
     'relation_managers' => [

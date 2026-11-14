@@ -87,6 +87,15 @@ class InteractionsRelationManager extends RelationManager
                     ->searchable()
                     ->columnSpanFull(),
 
+                // Optional, and only agreements of this organization (validated against these options)
+                Select::make('agreement_id')
+                    ->label(__('contacts::contacts.interaction.agreement'))
+                    ->options(fn (): array => $this->agreementOptions())
+                    ->placeholder(__('contacts::contacts.interaction.no_agreement'))
+                    ->native(false)
+                    ->searchable()
+                    ->columnSpanFull(),
+
                 Textarea::make('body')
                     ->label(__('contacts::contacts.interaction.body'))
                     ->required()
@@ -100,7 +109,7 @@ class InteractionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['person', 'author']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['person', 'agreement', 'author']))
             ->columns([
                 TextColumn::make('occurred_on')
                     ->label(__('contacts::contacts.interaction.occurred_on'))
@@ -119,6 +128,12 @@ class InteractionsRelationManager extends RelationManager
                     ->label(__('contacts::contacts.interaction.person'))
                     ->placeholder('—')
                     ->visibleFrom('md'),
+
+                TextColumn::make('agreement.title')
+                    ->label(__('contacts::contacts.interaction.agreement'))
+                    ->placeholder('—')
+                    ->limit(40)
+                    ->visibleFrom('xl'),
 
                 TextColumn::make('author.name')
                     ->label(__('contacts::contacts.interaction.author'))
@@ -170,5 +185,19 @@ class InteractionsRelationManager extends RelationManager
         }
 
         return $organization->people()->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * @return array<string, string> agreement id => title
+     */
+    private function agreementOptions(): array
+    {
+        $organization = $this->getOwnerRecord();
+
+        if (! $organization instanceof OrganizationModel) {
+            return [];
+        }
+
+        return $organization->agreements()->orderBy('title')->pluck('title', 'id')->all();
     }
 }
