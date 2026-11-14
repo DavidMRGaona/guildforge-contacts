@@ -130,9 +130,10 @@ final class CreateOrganizationWithPeopleTest extends ModuleTestCase
 
     public function test_a_failure_saving_a_person_leaves_nothing_behind(): void
     {
-        $armed = true;
-        PersonModel::creating(static function () use (&$armed): void {
-            if ($armed) {
+        $switch = new \stdClass;
+        $switch->armed = true;
+        PersonModel::creating(static function () use ($switch): void {
+            if ($switch->armed) {
                 throw new \RuntimeException('boom');
             }
         });
@@ -146,7 +147,7 @@ final class CreateOrganizationWithPeopleTest extends ModuleTestCase
             $this->assertSame('boom', $e->getMessage());
         } finally {
             // Only this test's listener goes quiet; other listeners stay registered
-            $armed = false;
+            $switch->armed = false;
         }
 
         $this->assertSame(0, OrganizationModel::query()->count());
