@@ -7,7 +7,10 @@ namespace Modules\Contacts\Tests\Feature\Console;
 use App\Application\Services\TimezoneServiceInterface;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Contracts\Notifications\Dispatcher;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Testing\Fakes\NotificationFake;
 use Illuminate\Testing\PendingCommand;
 use Modules\Contacts\Console\Commands\SendAgreementReviewsCommand;
 use Modules\Contacts\Domain\Enums\AgreementKind;
@@ -17,6 +20,7 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
 use Modules\Contacts\Notifications\AgreementReviewDueNotification;
+use RuntimeException;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
 use Tests\Support\Modules\ModuleTestCase;
 use Tests\Support\Time\UsesUtcStorage;
@@ -193,13 +197,73 @@ final class SendAgreementReviewsCommandTest extends ModuleTestCase
         Notification::assertSentTo($manager, AgreementReviewDueNotification::class);
     }
 
-    public function test_it_marks_the_date_even_when_nobody_can_be_notified(): void
+    public function test_it_leaves_the_date_unclaimed_when_nobody_can_be_notified(): void
     {
         $agreement = $this->agreement();
 
         $this->run_();
 
         Notification::assertNothingSent();
-        $this->assertSame($this->today, $agreement->refresh()->last_reminded_for?->format('Y-m-d'));
+        $this->assertNull($agreement->refresh()->last_reminded_for);
+
+        // Once someone holds the permission it is sent, and only then marked
+        $manager = $this->manager();
+        $this->run_();
+
+        Notification::assertSentTo($manager, AgreementReviewDueNotification::class);
+        $this->assertSame($this->today, $agreement->fresh()->last_reminded_for?->format('Y-m-d'));
+    }
+
+    public function test_it_falls_back_to_managers_when_the_responsible_person_was_deleted(): void
+    {
+        $responsible = $this->manager();
+        $manager = $this->manager();
+        $this->agreement(['responsible_id' => $responsible->id]);
+        $responsible->delete();
+
+        $this->run_();
+
+        Notification::assertSentTo($manager, AgreementReviewDueNotification::class);
+        Notification::assertNotSentTo($responsible, AgreementReviewDueNotification::class);
+    }
+
+    public function test_a_failed_sending_gives_the_date_back_and_does_not_stop_the_other_agreements(): void
+    {
+        $this->manager();
+        $failing = $this->agreement(['title' => 'Falla', 'review_on' => $this->day(-2), 'last_reminded_for' => $this->day(-9)]);
+        $fine = $this->agreement(['title' => 'Bien']);
+        $fake = new class extends NotificationFake
+        {
+            public static bool $throwing = true;
+
+            /** @var list<string> */
+            public static array $delivered = [];
+
+            public function send($notifiables, $notification): void
+            {
+                if (self::$throwing && str_contains(serialize($notification), 'Falla')) {
+                    throw new RuntimeException('Queue down');
+                }
+
+                self::$delivered[] = serialize($notification);
+            }
+        };
+        $this->app->instance(Dispatcher::class, $fake);
+        $this->app->instance(ChannelManager::class, $fake);
+
+        /** @var PendingCommand $command */
+        $command = $this->artisan('contacts:send-agreement-reviews');
+        $this->assertSame(1, $command->run());
+
+        $this->assertCount(1, $fake::$delivered);
+        $this->assertStringContainsString('Bien', $fake::$delivered[0]);
+        $this->assertSame($this->today, $fine->refresh()->last_reminded_for?->format('Y-m-d'));
+        // The previous date is back, so the next run tries again
+        $this->assertSame($this->day(-9), $failing->refresh()->last_reminded_for?->format('Y-m-d'));
+
+        $fake::$throwing = false;
+        $this->run_();
+
+        $this->assertSame($this->day(-2), $failing->refresh()->last_reminded_for->format('Y-m-d'));
     }
 }

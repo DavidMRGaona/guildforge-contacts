@@ -11,9 +11,11 @@ use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Modules\Contacts\Domain\Enums\OrganizationStatus;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Notifications\AgreementReviewDueNotification;
+use Throwable;
 
 /**
  * Reminds, once per review date, that an open agreement of an active organization is due for a
@@ -41,36 +43,83 @@ final class SendAgreementReviewsCommand extends Command
             ->get();
 
         $reminded = 0;
+        $failed = 0;
 
         foreach ($agreements as $agreement) {
-            // Claimed before sending, so a run by hand next to the scheduled one never doubles it
-            $claimed = AgreementModel::query()
-                ->whereKey($agreement->getKey())
-                ->where(fn (Builder $query): Builder => $query
-                    ->whereNull('last_reminded_for')
-                    ->orWhereColumn('last_reminded_for', '!=', 'review_on'))
-                ->update(['last_reminded_for' => $agreement->review_on?->format('Y-m-d')]) === 1;
-
-            if (! $claimed) {
-                continue;
+            // One agreement failing never stops the others
+            try {
+                $reminded += $this->remind($agreement) ? 1 : 0;
+            } catch (Throwable $exception) {
+                $failed++;
+                Log::error('Could not send the review reminder of an agreement.', [
+                    'agreement_id' => $agreement->id,
+                    'exception' => $exception->getMessage(),
+                ]);
             }
-
-            $recipients = $this->recipients($agreement);
-
-            if ($recipients->isNotEmpty()) {
-                $notification = AgreementReviewDueNotification::forAgreement($agreement);
-
-                foreach ($recipients as $user) {
-                    $user->notify($notification);
-                }
-            }
-
-            $reminded++;
         }
 
         $this->info("Reminded {$reminded} agreement(s).");
 
+        if ($failed > 0) {
+            $this->error("{$failed} agreement(s) could not be reminded; they are tried again on the next run.");
+
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Claims the review date, sends and keeps the claim only if it went out. The claim is given
+     * back when nobody can be told or sending fails, so the next run tries again; while it holds,
+     * a run by hand next to the scheduled one never doubles the reminder.
+     */
+    private function remind(AgreementModel $agreement): bool
+    {
+        $reviewOn = $agreement->review_on?->format('Y-m-d');
+        $previous = $agreement->last_reminded_for?->format('Y-m-d');
+
+        $claimed = AgreementModel::query()
+            ->whereKey($agreement->getKey())
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNull('last_reminded_for')
+                ->orWhereColumn('last_reminded_for', '!=', 'review_on'))
+            ->update(['last_reminded_for' => $reviewOn]) === 1;
+
+        if (! $claimed) {
+            return false;
+        }
+
+        try {
+            $recipients = $this->recipients($agreement);
+
+            if ($recipients->isEmpty()) {
+                Log::warning('Nobody can be told that an agreement is due for review.', ['agreement_id' => $agreement->id]);
+                $this->giveBack($agreement, $reviewOn, $previous);
+
+                return false;
+            }
+
+            $notification = AgreementReviewDueNotification::forAgreement($agreement);
+
+            foreach ($recipients as $user) {
+                $user->notify($notification);
+            }
+        } catch (Throwable $exception) {
+            $this->giveBack($agreement, $reviewOn, $previous);
+
+            throw $exception;
+        }
+
+        return true;
+    }
+
+    private function giveBack(AgreementModel $agreement, ?string $reviewOn, ?string $previous): void
+    {
+        AgreementModel::query()
+            ->whereKey($agreement->getKey())
+            ->where('last_reminded_for', $reviewOn)
+            ->update(['last_reminded_for' => $previous]);
     }
 
     /**
