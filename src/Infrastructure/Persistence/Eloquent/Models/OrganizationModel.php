@@ -30,6 +30,7 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, PersonModel> $people
+ * @property-read Collection<int, InteractionModel> $interactions
  */
 final class OrganizationModel extends Model
 {
@@ -71,6 +72,14 @@ final class OrganizationModel extends Model
     public function people(): HasMany
     {
         return $this->hasMany(PersonModel::class, 'organization_id');
+    }
+
+    /**
+     * @return HasMany<InteractionModel, $this>
+     */
+    public function interactions(): HasMany
+    {
+        return $this->hasMany(InteractionModel::class, 'organization_id');
     }
 
     /**

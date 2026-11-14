@@ -16,6 +16,10 @@ return [
             'singular' => 'persona de contacto',
             'plural' => 'personas de contacto',
         ],
+        'interaction' => [
+            'singular' => 'entrada del historial',
+            'plural' => 'entradas del historial',
+        ],
     ],
 
     'pages' => [
@@ -61,6 +65,13 @@ return [
             'active' => 'Activa',
             'archived' => 'Archivada',
         ],
+        'interaction_kind' => [
+            'meeting' => 'Reunión',
+            'call' => 'Llamada',
+            'email' => 'Correo',
+            'message' => 'Mensaje',
+            'other' => 'Otro',
+        ],
     ],
 
     'actions' => [
@@ -84,12 +95,29 @@ return [
         'person_check' => 'Entiendo que se borrará del todo y que no se puede deshacer',
     ],
 
+    'interaction' => [
+        'occurred_on' => 'Día',
+        'kind' => 'Tipo',
+        'person' => 'Persona',
+        'author' => 'Autor',
+        'body' => 'Qué se habló',
+        'no_person' => 'Sin persona concreta',
+    ],
+
     'relation_managers' => [
         'people' => [
             'title' => 'Personas de contacto',
             'create' => 'Añadir persona',
             'empty_state' => 'Sin personas de contacto',
             'empty_state_description' => 'Añade a quien atiende a la asociación en esta organización.',
+        ],
+        'interactions' => [
+            'title' => 'Historial',
+            'create' => 'Añadir entrada',
+            'empty_state' => 'Sin entradas en el historial',
+            'empty_state_description' => 'Anota reuniones, llamadas y mensajes para que la relación no dependa de la memoria de nadie.',
+            'delete_heading' => 'Borrar la entrada del historial',
+            'delete_description' => 'Se borrará del todo y no se podrá recuperar.',
         ],
     ],
 ];
