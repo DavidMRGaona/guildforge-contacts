@@ -7,7 +7,6 @@ namespace Modules\Contacts\Tests\Feature\Filament;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
-use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use LogicException;
 use Modules\Contacts\Domain\Enums\AgreementKind;
