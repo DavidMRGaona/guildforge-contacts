@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Contacts;
 
+use App\Application\Mail\DTOs\MailCategoryDTO;
 use App\Application\Modules\DTOs\PermissionDTO;
 use App\Modules\ModuleServiceProvider;
+use Illuminate\Console\Scheduling\Schedule;
 use Modules\Contacts\Application\Services\OrganizationArchiveServiceInterface;
+use Modules\Contacts\Console\Commands\SendAgreementReviewsCommand;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\InteractionModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
@@ -26,6 +29,8 @@ use Modules\Contacts\Policies\PersonPolicy;
  */
 final class ContactsServiceProvider extends ModuleServiceProvider
 {
+    public const string MAIL_AGREEMENT_REVIEW = 'contacts.agreement-review';
+
     public function moduleName(): string
     {
         return 'contacts';
@@ -73,5 +78,43 @@ final class ContactsServiceProvider extends ModuleServiceProvider
                 module: $this->moduleName(),
             ),
         ];
+    }
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        $this->registerAgreementReviewReminder();
+    }
+
+    /**
+     * @return list<MailCategoryDTO>
+     */
+    public function registerMailCategories(): array
+    {
+        return [
+            MailCategoryDTO::optional(
+                key: self::MAIL_AGREEMENT_REVIEW,
+                section: 'contacts::contacts.agreement_review.section',
+                label: 'contacts::contacts.agreement_review.label',
+                description: 'contacts::contacts.agreement_review.description',
+                digestible: true,
+                site: true,
+            ),
+        ];
+    }
+
+    private function registerAgreementReviewReminder(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([SendAgreementReviewsCommand::class]);
+        }
+
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            // The scheduler runs in the display zone (app.schedule_timezone): early morning there
+            $schedule->command('contacts:send-agreement-reviews')
+                ->dailyAt('07:00')
+                ->withoutOverlapping(10);
+        });
     }
 }
