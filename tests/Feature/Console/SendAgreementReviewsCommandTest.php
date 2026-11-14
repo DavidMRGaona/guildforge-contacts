@@ -236,18 +236,37 @@ final class SendAgreementReviewsCommandTest extends ModuleTestCase
         {
             public static bool $throwing = true;
 
+            public static string $failingId = '';
+
+            /** @var array<string, string> Agreement id => its review date */
+            public static array $reviewDates = [];
+
+            /** @var array<string, bool> Whether, while sending, the review date was already claimed */
+            public static array $claimedWhileSending = [];
+
             /** @var list<string> */
             public static array $delivered = [];
 
             public function send($notifiables, $notification): void
             {
-                if (self::$throwing && str_contains(serialize($notification), 'Falla')) {
+                $payload = serialize($notification);
+
+                foreach (self::$reviewDates as $id => $reviewOn) {
+                    if (str_contains($payload, $id)) {
+                        // The claim blocks a parallel run only if it is already in place here
+                        self::$claimedWhileSending[$id] = AgreementModel::query()->find($id)?->last_reminded_for?->format('Y-m-d') === $reviewOn;
+                    }
+                }
+
+                if (self::$throwing && str_contains($payload, self::$failingId)) {
                     throw new RuntimeException('Queue down');
                 }
 
-                self::$delivered[] = serialize($notification);
+                self::$delivered[] = $payload;
             }
         };
+        $fake::$failingId = $failing->id;
+        $fake::$reviewDates = [$failing->id => $this->day(-2), $fine->id => $this->today];
         $this->app->instance(Dispatcher::class, $fake);
         $this->app->instance(ChannelManager::class, $fake);
 
@@ -255,8 +274,10 @@ final class SendAgreementReviewsCommandTest extends ModuleTestCase
         $command = $this->artisan('contacts:send-agreement-reviews');
         $this->assertSame(1, $command->run());
 
+        $this->assertSame([$failing->id => true, $fine->id => true], $fake::$claimedWhileSending);
+
         $this->assertCount(1, $fake::$delivered);
-        $this->assertStringContainsString('Bien', $fake::$delivered[0]);
+        $this->assertStringContainsString($fine->id, $fake::$delivered[0]);
         $this->assertSame($this->today, $fine->refresh()->last_reminded_for?->format('Y-m-d'));
         // The previous date is back, so the next run tries again
         $this->assertSame($this->day(-9), $failing->refresh()->last_reminded_for?->format('Y-m-d'));
