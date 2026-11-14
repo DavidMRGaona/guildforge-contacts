@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Filament\Resources\AgreementResource\Pages;
 
+use App\Filament\Concerns\HasKnowledgeGuideAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 use Modules\Contacts\Filament\Resources\AgreementResource;
@@ -13,6 +14,8 @@ use Modules\Contacts\Filament\Resources\AgreementResource;
  */
 class ViewAgreement extends ViewRecord
 {
+    use HasKnowledgeGuideAction;
+
     protected static string $resource = AgreementResource::class;
 
     public function getTitle(): string
@@ -24,6 +27,7 @@ class ViewAgreement extends ViewRecord
     {
         return [
             EditAction::make(),
+            ...array_filter([$this->knowledgeGuideAction('contacts.panel.contacts')]),
         ];
     }
 }
