@@ -211,7 +211,7 @@ final class SendAgreementReviewsCommandTest extends ModuleTestCase
         $this->run_();
 
         Notification::assertSentTo($manager, AgreementReviewDueNotification::class);
-        $this->assertSame($this->today, $agreement->fresh()->last_reminded_for?->format('Y-m-d'));
+        $this->assertSame($this->today, $agreement->fresh()?->last_reminded_for?->format('Y-m-d'));
     }
 
     public function test_it_falls_back_to_managers_when_the_responsible_person_was_deleted(): void
