@@ -23,6 +23,7 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Filament\Actions\ContactActions;
 use Modules\Contacts\Filament\RelationManagers\AgreementsRelationManager;
 use Modules\Contacts\Filament\RelationManagers\InteractionsRelationManager;
+use Modules\Contacts\Filament\RelationManagers\LinksRelationManager;
 use Modules\Contacts\Filament\RelationManagers\PeopleRelationManager;
 use Modules\Contacts\Filament\Resources\OrganizationResource\Pages\CreateOrganization;
 use Modules\Contacts\Filament\Resources\OrganizationResource\Pages\EditOrganization;
@@ -32,7 +33,7 @@ use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationMode
 
 /**
  * «Contactos»: the outside organizations the association deals with. Their people are a relation
- * manager of the organization page; history and agreements join it as relation managers of their own.
+ * manager of the organization page, next to its history, agreements and links to other records.
  */
 class OrganizationResource extends BaseResource
 {
@@ -196,6 +197,7 @@ class OrganizationResource extends BaseResource
             PeopleRelationManager::class,
             InteractionsRelationManager::class,
             AgreementsRelationManager::class,
+            LinksRelationManager::class,
         ];
     }
 

@@ -8,9 +8,11 @@ use App\Infrastructure\Persistence\Eloquent\Concerns\StoresInstantsInStorageTime
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Modules\Contacts\Domain\Enums\AgreementKind;
 use Modules\Contacts\Domain\Enums\AgreementStatus;
@@ -36,6 +38,7 @@ use Modules\Contacts\Domain\Enums\AgreementStatus;
  * @property Carbon|null $updated_at
  * @property-read OrganizationModel $organization
  * @property-read UserModel|null $responsible
+ * @property-read Collection<int, LinkModel> $links
  */
 final class AgreementModel extends Model
 {
@@ -92,6 +95,16 @@ final class AgreementModel extends Model
     public function responsible(): BelongsTo
     {
         return $this->belongsTo(UserModel::class, 'responsible_id');
+    }
+
+    /**
+     * Records linked to this agreement (they also belong to its organization).
+     *
+     * @return HasMany<LinkModel, $this>
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(LinkModel::class, 'agreement_id');
     }
 
     /**
