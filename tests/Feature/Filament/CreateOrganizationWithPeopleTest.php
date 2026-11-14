@@ -130,8 +130,10 @@ final class CreateOrganizationWithPeopleTest extends ModuleTestCase
 
     public function test_a_failure_saving_a_person_leaves_nothing_behind(): void
     {
-        $switch = new \stdClass;
-        $switch->armed = true;
+        $switch = new class
+        {
+            public bool $armed = true;
+        };
         PersonModel::creating(static function () use ($switch): void {
             if ($switch->armed) {
                 throw new \RuntimeException('boom');
