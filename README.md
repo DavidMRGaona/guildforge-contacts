@@ -14,7 +14,7 @@ Aparece en **Personas → Contactos**, con **Acuerdos** como entrada hija.
 
 ## Ayuda
 
-La guía `contacts.panel.contacts` explica el uso del módulo en el centro de ayuda del panel. La ven solo quienes tienen alguno de los permisos del módulo, y se enlaza desde sus páginas.
+Dos guías en el centro de ayuda del panel: `contacts.panel.contacts` (qué es cada cosa, avisos, vínculos y datos personales; para quien tiene alguno de los permisos del módulo, y se enlaza desde sus páginas) y `contacts.panel.manage-contacts` (los pasos para crear y cambiar; solo con `contacts.manage`).
 
 ## Permisos
 
@@ -30,7 +30,7 @@ Ningún rol los recibe por defecto: la administración los marca en el editor de
 - Categoría de correo opcional `contacts.agreement-review` («Revisión de acuerdos»): campana del sitio y correo, apta para el resumen diario. Cada persona puede desactivarla en sus preferencias.
 - Comando programado `contacts:send-agreement-reviews`, cada día a las 07:00 en la zona horaria de visualización del sitio.
 - Avisa **una vez por fecha de revisión** de los acuerdos activos o en pausa de organizaciones no archivadas. Lo recibe el responsable si aún puede gestionar contactos; si no, todas las personas con ese permiso. Poner una nueva fecha de revisión es la forma de dar el acuerdo por revisado.
-- El envío es **al menos una vez**: si falla o no hay a quién avisar, se reintenta en la siguiente ejecución.
+- Entrega: se reintenta en la siguiente ejecución si no se pudo encolar o nadie podía recibirlo; en los demás casos se envía una vez por fecha, y el aviso de la campana se descarta si el acuerdo se termina o se borra antes.
 
 ## Requisitos
 

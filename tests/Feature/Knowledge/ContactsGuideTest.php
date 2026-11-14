@@ -37,6 +37,8 @@ final class ContactsGuideTest extends ModuleTestCase
 
     private const string GUIDE = 'contacts.panel.contacts';
 
+    private const string MANAGE_GUIDE = 'contacts.panel.manage-contacts';
+
     protected ?string $moduleName = 'contacts';
 
     protected bool $autoEnableModule = true;
@@ -68,9 +70,18 @@ final class ContactsGuideTest extends ModuleTestCase
 
     public function test_only_who_holds_one_of_the_permissions_sees_the_guide(): void
     {
-        $this->assertTrue($this->sees($this->userWith('contacts:contacts.view_any')));
-        $this->assertTrue($this->sees($this->userWith('contacts:contacts.manage')));
-        $this->assertFalse($this->sees(UserModel::factory()->editor()->create()));
+        $reader = $this->userWith('contacts:contacts.view_any');
+        $manager = $this->userWith('contacts:contacts.manage');
+        $nobody = UserModel::factory()->editor()->create();
+
+        $this->assertTrue($this->sees($reader));
+        $this->assertTrue($this->sees($manager));
+        $this->assertFalse($this->sees($nobody));
+
+        // The step by step guide is for who can change contacts only
+        $this->assertFalse($this->sees($reader, self::MANAGE_GUIDE));
+        $this->assertTrue($this->sees($manager, self::MANAGE_GUIDE));
+        $this->assertFalse($this->sees($nobody, self::MANAGE_GUIDE));
     }
 
     public function test_the_pages_open_the_guide(): void
@@ -106,9 +117,9 @@ final class ContactsGuideTest extends ModuleTestCase
         Livewire::test(ListOrganizations::class)->assertActionVisible('contextualHelp');
     }
 
-    private function sees(UserModel $user): bool
+    private function sees(UserModel $user, string $guide = self::GUIDE): bool
     {
-        return in_array(self::GUIDE, $this->queries()->visibleIds($user, GuideAudience::Panel), true);
+        return in_array($guide, $this->queries()->visibleIds($user, GuideAudience::Panel), true);
     }
 
     private function userWith(string $permissionKey): UserModel
