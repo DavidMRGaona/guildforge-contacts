@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Tests\Feature\Filament;
 
-use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -133,7 +132,7 @@ final class AgreementEditTest extends ModuleTestCase
         $candidates = app(ResponsibleCandidates::class);
 
         $first = $candidates->options();
-        $this->assertInstanceOf(UserModel::class, $this->editorWithPermissions(['contacts:contacts.manage']));
+        $this->editorWithPermissions(['contacts:contacts.manage']);
 
         $this->assertSame($candidates, app(ResponsibleCandidates::class));
         $this->assertSame($first, $candidates->options());

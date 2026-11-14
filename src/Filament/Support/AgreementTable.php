@@ -149,7 +149,7 @@ final class AgreementTable
             return null;
         }
 
-        return UserModel::query()->find($record->getRawOriginal('responsible_id'));
+        return UserModel::query()->whereKey($record->getRawOriginal('responsible_id'))->first();
     }
 
     public static function userName(UserModel $user): string
