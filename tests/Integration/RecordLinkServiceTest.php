@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Contacts\Tests\Integration;
 
 use App\Application\Linking\DTOs\LinkableRecordDTO;
+use App\Application\Linking\Services\LinkableRecordLookupInterface;
 use App\Application\Linking\Services\LinkableRecordSourceRegistryInterface;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeImmutable;
@@ -15,6 +16,7 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Domain\Enums\RecordLinkOutcome;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\LinkModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
+use Modules\Contacts\Tests\Support\CountingLinkableRecordLookup;
 use Modules\Contacts\Tests\Support\RestrictedLinkableRecordSource;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
 use Tests\Support\Linking\FakeLinkableRecordSource;
@@ -47,7 +49,7 @@ final class RecordLinkServiceTest extends ModuleTestCase
         ], 'testing');
 
         $this->organization = OrganizationModel::create(['name' => 'Tienda', 'type' => OrganizationType::Shop]);
-        $this->manager = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $this->manager = $this->editorWithPermissions(['contacts:contacts.manage', 'contacts:contacts.view_any']);
     }
 
     protected function tearDown(): void
@@ -228,5 +230,81 @@ final class RecordLinkServiceTest extends ModuleTestCase
         $new = $this->storedLink(['record_type' => 'fake', 'record_id' => 'new']);
 
         $this->assertSame([$new->id, $old->id, $undated->id], $this->service()->resolve($this->organization, $this->manager)->visibleIds());
+    }
+
+    public function test_each_type_is_asked_once_with_all_its_ids_and_never_one_by_one(): void
+    {
+        $this->fakeRecord('t-1', 'Uno');
+        $this->fakeRecord('t-2', 'Dos');
+        RestrictedLinkableRecordSource::$records[] = new LinkableRecordDTO('restricted', 'r-1', 'Borrador');
+        RestrictedLinkableRecordSource::$allowedViewers = [$this->manager->id];
+        $this->storedLink(['record_type' => 'fake', 'record_id' => 't-1']);
+        $this->storedLink(['record_type' => 'fake', 'record_id' => 't-2']);
+        $this->storedLink(['record_type' => 'fake', 'record_id' => 'gone']);
+        $this->storedLink(['record_type' => 'restricted', 'record_id' => 'r-1']);
+        $counting = $this->countingLookup();
+
+        $resolved = $this->service()->resolve($this->organization, $this->manager);
+
+        $this->assertCount(3, $resolved->visible);
+        $this->assertSame(1, $resolved->unavailable);
+        $this->assertSame([], $counting->findCalls);
+        $this->assertCount(2, $counting->findManyCalls);
+        $byType = array_column($counting->findManyCalls, 'ids', 'type');
+        $this->assertEqualsCanonicalizing(['t-1', 't-2', 'gone'], $byType['fake']);
+        $this->assertSame(['r-1'], $byType['restricted']);
+    }
+
+    public function test_a_type_without_a_source_is_not_asked_at_all(): void
+    {
+        $this->storedLink(['record_type' => 'tournament', 'record_id' => 't-9']);
+        $counting = $this->countingLookup();
+
+        $resolved = $this->service()->resolve($this->organization, $this->manager);
+
+        $this->assertSame([], $resolved->visible);
+        $this->assertSame(1, $resolved->unavailable);
+        $this->assertSame([], $counting->findManyCalls);
+        $this->assertSame([], $counting->findCalls);
+    }
+
+    public function test_the_same_record_linked_twice_is_asked_once(): void
+    {
+        $this->fakeRecord('t-1', 'Uno');
+        $agreement = $this->organization->agreements()->create(['title' => 'Sala', 'kind' => AgreementKind::Space]);
+        $this->storedLink(['record_type' => 'fake', 'record_id' => 't-1']);
+        $this->storedLink(['agreement_id' => $agreement->id, 'record_type' => 'fake', 'record_id' => 't-1']);
+        $counting = $this->countingLookup();
+
+        $this->service()->resolve($this->organization, $this->manager);
+
+        $this->assertSame([['type' => 'fake', 'ids' => ['t-1']]], $counting->findManyCalls);
+    }
+
+    public function test_resolving_needs_the_view_permission_itself(): void
+    {
+        $this->fakeRecord('t-1', 'Torneo de primavera');
+        $this->storedLink(['record_type' => 'fake', 'record_id' => 't-1']);
+        $managerOnly = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $nobody = $this->editorWithPermissions([]);
+        $counting = $this->countingLookup();
+
+        foreach ([$managerOnly, $nobody] as $viewer) {
+            $resolved = $this->service()->resolve($this->organization, $viewer);
+
+            $this->assertSame([], $resolved->visible);
+            $this->assertSame(0, $resolved->unavailable);
+        }
+
+        $this->assertSame([], $counting->findManyCalls);
+    }
+
+    private function countingLookup(): CountingLinkableRecordLookup
+    {
+        $counting = new CountingLinkableRecordLookup(app(LinkableRecordLookupInterface::class));
+        $this->app->instance(LinkableRecordLookupInterface::class, $counting);
+        $this->app->forgetInstance(RecordLinkServiceInterface::class);
+
+        return $counting;
     }
 }

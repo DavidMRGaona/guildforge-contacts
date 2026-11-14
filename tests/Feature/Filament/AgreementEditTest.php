@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Tests\Feature\Filament;
 
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -13,7 +15,6 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Filament\Resources\AgreementResource;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\EditAgreement;
 use Modules\Contacts\Filament\Resources\OrganizationResource;
-use Modules\Contacts\Filament\Support\ResponsibleCandidates;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
@@ -126,15 +127,24 @@ final class AgreementEditTest extends ModuleTestCase
         $this->edit($agreement)->assertDontSee('ya no puede gestionar contactos');
     }
 
-    public function test_the_holders_are_looked_up_once_per_request(): void
+    public function test_the_holders_are_looked_up_once_between_rendering_and_saving(): void
     {
-        $this->editorWithPermissions(['contacts:contacts.manage']);
-        $candidates = app(ResponsibleCandidates::class);
+        $manager = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $agreement = $this->agreement(['responsible_id' => $manager->getKey()]);
+        $lookups = 0;
+        DB::listen(function (QueryExecuted $query) use (&$lookups): void {
+            // The finder narrows accounts by their roles: that query is one lookup of the holders
+            if (str_contains($query->sql, 'anonymized_at') && str_contains($query->sql, 'roles')) {
+                $lookups++;
+            }
+        });
 
-        $first = $candidates->options();
-        $this->editorWithPermissions(['contacts:contacts.manage']);
+        $this->edit($agreement)
+            ->assertSee($manager->name)
+            ->fillForm(['title' => 'Otro título', 'responsible_id' => $manager->getKey()])
+            ->call('save')
+            ->assertHasNoFormErrors();
 
-        $this->assertSame($candidates, app(ResponsibleCandidates::class));
-        $this->assertSame($first, $candidates->options());
+        $this->assertSame(1, $lookups);
     }
 }

@@ -22,6 +22,8 @@ final readonly class RecordLinkService implements RecordLinkServiceInterface
 {
     private const string MANAGE = 'contacts:contacts.manage';
 
+    private const string VIEW = 'contacts:contacts.view_any';
+
     /** Size of the record_type column. */
     private const int MAX_TYPE_LENGTH = 100;
 
@@ -90,33 +92,47 @@ final readonly class RecordLinkService implements RecordLinkServiceInterface
 
     public function resolve(OrganizationModel|AgreementModel $owner, UserModel $viewer): ResolvedRecordLinksDTO
     {
+        // Titles are only ever read for someone who may see contacts: fails closed, whoever calls
+        if (! $this->authorization->can($viewer, self::VIEW)) {
+            return new ResolvedRecordLinksDTO([], 0);
+        }
+
         $links = $owner->links()->get(['id', 'record_type', 'record_id']);
         $labels = $this->lookup->types();
 
-        /** @var array<string, LinkableRecordDTO|null> $records */
-        $records = [];
+        // One question per type with all its distinct ids; the lookup splits long lists itself.
+        // A type nobody can name, or an id that never fit its column, is not asked about.
+        /** @var array<string, array<string, true>> $idsByType */
+        $idsByType = [];
+
+        foreach ($links as $link) {
+            if (isset($labels[$link->record_type]) && $this->fitsRecord($link->record_type, $link->record_id)) {
+                $idsByType[$link->record_type][$link->record_id] = true;
+            }
+        }
+
+        /** @var array<string, array<string, LinkableRecordDTO>> $recordsByType */
+        $recordsByType = [];
+
+        foreach ($idsByType as $type => $ids) {
+            // PHP turns numeric array keys into integers: back to the text that was stored
+            $recordsByType[$type] = $this->lookup->findMany($type, array_map(strval(...), array_keys($ids)), $viewer->id);
+        }
+
         $visible = [];
         $unavailable = 0;
 
         foreach ($links as $link) {
-            // The contract has no batch lookup: each record is asked once per page view
-            $key = $link->record_type."\0".$link->record_id;
-
-            if (! array_key_exists($key, $records)) {
-                $records[$key] = $this->find($link->record_type, $link->record_id, $viewer);
-            }
-
-            $record = $records[$key];
-            $label = $labels[$link->record_type] ?? null;
+            $record = $recordsByType[$link->record_type][$link->record_id] ?? null;
 
             // Missing, hidden from this viewer, source gone or failing, type unnamed: all alike
-            if (! $record instanceof LinkableRecordDTO || $label === null) {
+            if (! $record instanceof LinkableRecordDTO) {
                 $unavailable++;
 
                 continue;
             }
 
-            $visible[] = new ResolvedRecordLinkDTO($link->id, $label, $record);
+            $visible[] = new ResolvedRecordLinkDTO($link->id, $labels[$link->record_type], $record);
         }
 
         usort($visible, $this->newestFirst(...));
@@ -152,6 +168,11 @@ final readonly class RecordLinkService implements RecordLinkServiceInterface
     /**
      * A type or id longer than its column was never stored and can never be.
      */
+    private function fitsRecord(string $type, string $recordId): bool
+    {
+        return $this->fitsType($type) && mb_strlen($recordId) <= LinkableRecordDTO::MAX_ID_LENGTH;
+    }
+
     private function fitsType(string $type): bool
     {
         return mb_strlen($type) <= self::MAX_TYPE_LENGTH;

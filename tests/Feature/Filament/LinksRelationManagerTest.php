@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Modules\Contacts\Tests\Feature\Filament;
 
 use App\Application\Linking\DTOs\LinkableRecordDTO;
+use App\Application\Linking\Services\LinkableRecordLookupInterface;
 use App\Application\Linking\Services\LinkableRecordSourceRegistryInterface;
 use App\Filament\Actions\RowDetailsAction;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeImmutable;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\Exceptions\ActionNotResolvableException;
 use Filament\Actions\Testing\TestAction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -25,6 +28,7 @@ use Modules\Contacts\Filament\Resources\OrganizationResource\Pages\EditOrganizat
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\LinkModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
+use Modules\Contacts\Tests\Support\CountingLinkableRecordLookup;
 use Modules\Contacts\Tests\Support\RestrictedLinkableRecordSource;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
 use Tests\Support\Linking\FakeLinkableRecordSource;
@@ -311,9 +315,108 @@ final class LinksRelationManagerTest extends ModuleTestCase
     {
         $link = $this->storedLink('tournament', 't-9');
 
-        $this->manager()->assertCanNotSeeTableRecords([$link]);
+        $this->manager()
+            ->assertCanNotSeeTableRecords([$link])
+            ->assertSeeText('1 vínculo no disponible');
 
         $this->assertDatabaseHas('contacts_links', ['id' => $link->id]);
+    }
+
+    public function test_a_hidden_link_cannot_be_removed_with_a_forged_key(): void
+    {
+        RestrictedLinkableRecordSource::$records[] = new LinkableRecordDTO('restricted', 'r-1', 'Borrador');
+        $hidden = $this->storedLink('restricted', 'r-1');
+
+        try {
+            $this->manager()->callAction(TestAction::make('delete')->table($hidden));
+            $this->fail('The forged key must not resolve to a row of this table.');
+        } catch (ActionNotResolvableException) {
+            // Refused before anything runs
+        }
+
+        $this->assertDatabaseHas('contacts_links', ['id' => $hidden->id]);
+    }
+
+    public function test_a_link_of_another_organization_cannot_be_removed_with_a_forged_key(): void
+    {
+        $this->fakeRecord('t-1', 'Torneo de primavera');
+        $other = OrganizationModel::create(['name' => 'Otra', 'type' => OrganizationType::Other]);
+        $foreign = LinkModel::create(['organization_id' => $other->id, 'record_type' => 'fake', 'record_id' => 't-1']);
+
+        try {
+            $this->manager()->callAction(TestAction::make('delete')->table($foreign));
+            $this->fail('The forged key must not resolve to a row of this table.');
+        } catch (ActionNotResolvableException) {
+            // Refused before anything runs
+        }
+
+        $this->assertDatabaseHas('contacts_links', ['id' => $foreign->id]);
+    }
+
+    public function test_a_link_of_the_agreement_cannot_be_removed_from_the_organization_tab(): void
+    {
+        $this->fakeRecord('t-1', 'Torneo de primavera');
+        $agreement = $this->organization->agreements()->create(['title' => 'Sala', 'kind' => AgreementKind::Space]);
+        $ofAgreement = $this->storedLink('fake', 't-1', $agreement);
+
+        try {
+            $this->manager()->callAction(TestAction::make('delete')->table($ofAgreement));
+            $this->fail('The forged key must not resolve to a row of this table.');
+        } catch (ActionNotResolvableException) {
+            // Refused before anything runs
+        }
+
+        $this->assertDatabaseHas('contacts_links', ['id' => $ofAgreement->id]);
+    }
+
+    public function test_one_page_view_asks_each_type_once_and_never_record_by_record(): void
+    {
+        $this->fakeRecord('t-1', 'Uno');
+        $this->fakeRecord('t-2', 'Dos');
+        RestrictedLinkableRecordSource::$records[] = new LinkableRecordDTO('restricted', 'r-1', 'Borrador');
+        $this->storedLink('fake', 't-1');
+        $this->storedLink('fake', 't-2');
+        $this->storedLink('fake', 'gone');
+        $this->storedLink('restricted', 'r-1');
+        $counting = new CountingLinkableRecordLookup(app(LinkableRecordLookupInterface::class));
+        $this->app->instance(LinkableRecordLookupInterface::class, $counting);
+
+        $this->manager()->assertOk();
+
+        $this->assertSame([], $counting->findCalls);
+        $this->assertEqualsCanonicalizing(['fake', 'restricted'], array_column($counting->findManyCalls, 'type'));
+    }
+
+    public function test_the_order_is_one_expression_whatever_the_number_of_links(): void
+    {
+        $queries = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $this->fakeRecord("t-$i", "Torneo $i", sprintf('2026-0%d-10', $i));
+            $this->storedLink('fake', "t-$i");
+        }
+        DB::listen(function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        $this->manager()->assertOk();
+
+        $orders = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'contacts_links') && str_contains($sql, 'order by'));
+        $this->assertNotEmpty($orders);
+        foreach ($orders as $sql) {
+            $this->assertLessThanOrEqual(1, substr_count(strtolower($sql), 'case '));
+        }
+    }
+
+    public function test_a_numeric_record_id_picked_in_the_form_is_still_linked(): void
+    {
+        $this->fakeRecord('12345', 'Torneo numérico');
+
+        $this->manager()
+            ->callAction(TestAction::make('linkRecord')->table(), data: ['record_type' => 'fake', 'record_id' => 12345])
+            ->assertHasNoActionErrors()
+            ->assertNotified(__('contacts::contacts.links.linked'));
+
+        $this->assertDatabaseHas('contacts_links', ['record_type' => 'fake', 'record_id' => '12345']);
     }
 
     public function test_the_row_actions_fit_in_one_menu_with_the_details(): void

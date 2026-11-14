@@ -175,8 +175,9 @@ class LinksRelationManager extends RelationManager
         $type = $data['record_type'] ?? null;
         $recordId = $data['record_id'] ?? null;
 
-        $outcome = $user instanceof UserModel && is_string($type) && is_string($recordId)
-            ? $this->service()->link($this->owner(), $type, $recordId, $user)
+        // A source with numeric ids gives the picker integer keys: the service gets them as text
+        $outcome = $user instanceof UserModel && is_string($type) && (is_string($recordId) || is_int($recordId))
+            ? $this->service()->link($this->owner(), $type, (string) $recordId, $user)
             : RecordLinkOutcome::Unavailable;
 
         $this->resolved = null;
@@ -206,11 +207,17 @@ class LinksRelationManager extends RelationManager
 
         $query->whereKey($ids);
 
-        // Kept in the order the service gave (newest record first): each clause brings the next
-        // link up among the rest, with its id as a binding
-        foreach ($ids as $id) {
-            $query->orderByRaw('CASE WHEN contacts_links.id = ? THEN 0 ELSE 1 END', [$id]);
+        // Kept in the order the service gave (newest record first), as one expression: the position
+        // of each link, not one ORDER BY clause per link
+        $cases = implode(' ', array_fill(0, count($ids), 'WHEN ? THEN ?'));
+        $bindings = [];
+
+        foreach ($ids as $position => $id) {
+            $bindings[] = $id;
+            $bindings[] = $position;
         }
+
+        $query->orderByRaw("CASE contacts_links.id {$cases} END", $bindings);
 
         return $query;
     }
@@ -264,11 +271,11 @@ class LinksRelationManager extends RelationManager
     {
         $user = auth()->user();
 
-        if ($type === null || ! is_string($value) || ! $user instanceof UserModel) {
+        if ($type === null || ! is_string($value) && ! is_int($value) || ! $user instanceof UserModel) {
             return null;
         }
 
-        $record = $this->service()->find($type, $value, $user);
+        $record = $this->service()->find($type, (string) $value, $user);
 
         return $record instanceof LinkableRecordDTO ? $this->optionLabel($record) : null;
     }
