@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Tests\Feature\Filament;
 
+use App\Application\Authorization\Services\AuthorizationServiceInterface;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -16,6 +17,7 @@ use Modules\Contacts\Filament\Resources\OrganizationResource;
 use Modules\Contacts\Filament\Support\ResponsibleCandidates;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
+use Modules\Contacts\Tests\Support\CountingAuthorization;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
 use Tests\Support\Modules\InteractsWithModulePanel;
 use Tests\Support\Modules\ModuleTestCase;
@@ -126,15 +128,23 @@ final class AgreementEditTest extends ModuleTestCase
         $this->edit($agreement)->assertDontSee('ya no puede gestionar contactos');
     }
 
-    public function test_the_holders_are_looked_up_once_per_request(): void
+    public function test_the_holders_are_looked_up_once_between_rendering_and_saving(): void
     {
-        $this->editorWithPermissions(['contacts:contacts.manage']);
+        $manager = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $agreement = $this->agreement(['responsible_id' => $manager->getKey()]);
+        $counting = new CountingAuthorization(app(AuthorizationServiceInterface::class));
+        $this->app->instance(AuthorizationServiceInterface::class, $counting);
+        $this->app->forgetScopedInstances();
         $candidates = app(ResponsibleCandidates::class);
 
-        $first = $candidates->options();
-        $this->editorWithPermissions(['contacts:contacts.manage']);
+        $this->edit($agreement)
+            ->assertSee($manager->name)
+            ->fillForm(['title' => 'Otro título', 'responsible_id' => $manager->getKey()])
+            ->call('save')
+            ->assertHasNoFormErrors();
 
         $this->assertSame($candidates, app(ResponsibleCandidates::class));
-        $this->assertSame($first, $candidates->options());
+        // Whoever else holds the permission is checked once per lookup: the account that is not the one editing
+        $this->assertSame(1, $counting->canAllCallsFor($manager, ['contacts:contacts.manage']));
     }
 }

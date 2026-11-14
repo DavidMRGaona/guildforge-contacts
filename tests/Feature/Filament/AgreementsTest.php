@@ -181,6 +181,35 @@ final class AgreementsTest extends ModuleTestCase
         $this->assertDatabaseHas('contacts_agreements', ['title' => 'X', 'responsible_id' => $manager->getKey()]);
     }
 
+    public function test_editing_from_the_organization_tab_cannot_move_the_agreement_to_another_organization(): void
+    {
+        $other = OrganizationModel::create(['name' => 'Otra', 'type' => OrganizationType::Other]);
+        $agreement = $this->agreement();
+
+        $this->manager()
+            ->callAction(TestAction::make('edit')->table($agreement), data: ['title' => 'Nuevo título', 'organization_id' => $other->getKey()])
+            ->assertHasNoActionErrors();
+
+        $agreement->refresh();
+        $this->assertSame('Nuevo título', $agreement->title);
+        $this->assertSame($this->organization->getKey(), $agreement->organization_id);
+    }
+
+    public function test_editing_from_the_organization_tab_refuses_a_forged_responsible(): void
+    {
+        $viewer = $this->editorWithPermissions(['contacts:contacts.view_any']);
+        $manager = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $agreement = $this->agreement(['responsible_id' => $manager->getKey()]);
+
+        $this->manager()
+            ->callAction(TestAction::make('edit')->table($agreement), data: ['title' => 'Otro título', 'responsible_id' => $viewer->getKey()])
+            ->assertHasActionErrors(['responsible_id']);
+
+        $agreement->refresh();
+        $this->assertSame('Descuento', $agreement->title);
+        $this->assertSame($manager->getKey(), $agreement->responsible_id);
+    }
+
     public function test_the_list_filters_by_status_kind_and_pending_review(): void
     {
         $due = $this->agreement(['title' => 'Vencido', 'review_on' => $this->yesterday()]);
