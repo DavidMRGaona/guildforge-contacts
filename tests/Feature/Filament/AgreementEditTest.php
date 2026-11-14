@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Contacts\Tests\Feature\Filament;
 
-use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Support\Facades\DB;
+use App\Application\Authorization\Services\AuthorizationServiceInterface;
 use Livewire\Component;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -15,8 +14,10 @@ use Modules\Contacts\Domain\Enums\OrganizationType;
 use Modules\Contacts\Filament\Resources\AgreementResource;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\EditAgreement;
 use Modules\Contacts\Filament\Resources\OrganizationResource;
+use Modules\Contacts\Filament\Support\ResponsibleCandidates;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\AgreementModel;
 use Modules\Contacts\Infrastructure\Persistence\Eloquent\Models\OrganizationModel;
+use Modules\Contacts\Tests\Support\CountingAuthorization;
 use Tests\Support\Authorization\CreatesUsersWithPermissions;
 use Tests\Support\Modules\InteractsWithModulePanel;
 use Tests\Support\Modules\ModuleTestCase;
@@ -131,13 +132,10 @@ final class AgreementEditTest extends ModuleTestCase
     {
         $manager = $this->editorWithPermissions(['contacts:contacts.manage']);
         $agreement = $this->agreement(['responsible_id' => $manager->getKey()]);
-        $lookups = 0;
-        DB::listen(function (QueryExecuted $query) use (&$lookups): void {
-            // The finder narrows accounts by their roles: that query is one lookup of the holders
-            if (str_contains($query->sql, 'anonymized_at') && str_contains($query->sql, 'roles')) {
-                $lookups++;
-            }
-        });
+        $counting = new CountingAuthorization(app(AuthorizationServiceInterface::class));
+        $this->app->instance(AuthorizationServiceInterface::class, $counting);
+        $this->app->forgetScopedInstances();
+        $candidates = app(ResponsibleCandidates::class);
 
         $this->edit($agreement)
             ->assertSee($manager->name)
@@ -145,6 +143,8 @@ final class AgreementEditTest extends ModuleTestCase
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertSame(1, $lookups);
+        $this->assertSame($candidates, app(ResponsibleCandidates::class));
+        // Whoever else holds the permission is checked once per lookup: the account that is not the one editing
+        $this->assertSame(1, $counting->canAllCallsFor($manager, ['contacts:contacts.manage']));
     }
 }

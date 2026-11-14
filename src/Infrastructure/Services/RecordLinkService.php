@@ -92,8 +92,9 @@ final readonly class RecordLinkService implements RecordLinkServiceInterface
 
     public function resolve(OrganizationModel|AgreementModel $owner, UserModel $viewer): ResolvedRecordLinksDTO
     {
-        // Titles are only ever read for someone who may see contacts: fails closed, whoever calls
-        if (! $this->authorization->can($viewer, self::VIEW)) {
+        // Titles are only ever read for someone who may see contacts, by the policies' own rule
+        // (viewing or managing): fails closed, whoever calls
+        if (! $this->authorization->canAny($viewer, [self::VIEW, self::MANAGE])) {
             return new ResolvedRecordLinksDTO([], 0);
         }
 

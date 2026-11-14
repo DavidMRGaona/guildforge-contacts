@@ -369,7 +369,7 @@ final class LinksRelationManagerTest extends ModuleTestCase
         $this->assertDatabaseHas('contacts_links', ['id' => $ofAgreement->id]);
     }
 
-    public function test_one_page_view_asks_each_type_once_and_never_record_by_record(): void
+    public function test_one_request_asks_each_type_once_with_every_link_of_the_owner_and_never_record_by_record(): void
     {
         $this->fakeRecord('t-1', 'Uno');
         $this->fakeRecord('t-2', 'Dos');

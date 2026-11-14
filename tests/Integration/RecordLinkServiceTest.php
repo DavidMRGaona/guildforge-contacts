@@ -49,7 +49,7 @@ final class RecordLinkServiceTest extends ModuleTestCase
         ], 'testing');
 
         $this->organization = OrganizationModel::create(['name' => 'Tienda', 'type' => OrganizationType::Shop]);
-        $this->manager = $this->editorWithPermissions(['contacts:contacts.manage', 'contacts:contacts.view_any']);
+        $this->manager = $this->editorWithPermissions(['contacts:contacts.manage']);
     }
 
     protected function tearDown(): void
@@ -232,7 +232,7 @@ final class RecordLinkServiceTest extends ModuleTestCase
         $this->assertSame([$new->id, $old->id, $undated->id], $this->service()->resolve($this->organization, $this->manager)->visibleIds());
     }
 
-    public function test_each_type_is_asked_once_with_all_its_ids_and_never_one_by_one(): void
+    public function test_each_type_is_asked_once_with_all_the_ids_of_the_owner_and_never_one_by_one(): void
     {
         $this->fakeRecord('t-1', 'Uno');
         $this->fakeRecord('t-2', 'Dos');
@@ -281,21 +281,21 @@ final class RecordLinkServiceTest extends ModuleTestCase
         $this->assertSame([['type' => 'fake', 'ids' => ['t-1']]], $counting->findManyCalls);
     }
 
-    public function test_resolving_needs_the_view_permission_itself(): void
+    public function test_resolving_needs_view_or_manage_like_the_policies(): void
     {
         $this->fakeRecord('t-1', 'Torneo de primavera');
-        $this->storedLink(['record_type' => 'fake', 'record_id' => 't-1']);
-        $managerOnly = $this->editorWithPermissions(['contacts:contacts.manage']);
+        $link = $this->storedLink(['record_type' => 'fake', 'record_id' => 't-1']);
+        $viewer = $this->editorWithPermissions(['contacts:contacts.view_any']);
         $nobody = $this->editorWithPermissions([]);
+
+        $this->assertSame([$link->id], $this->service()->resolve($this->organization, $this->manager)->visibleIds());
+        $this->assertSame([$link->id], $this->service()->resolve($this->organization, $viewer)->visibleIds());
+
         $counting = $this->countingLookup();
+        $resolved = $this->service()->resolve($this->organization, $nobody);
 
-        foreach ([$managerOnly, $nobody] as $viewer) {
-            $resolved = $this->service()->resolve($this->organization, $viewer);
-
-            $this->assertSame([], $resolved->visible);
-            $this->assertSame(0, $resolved->unavailable);
-        }
-
+        $this->assertSame([], $resolved->visible);
+        $this->assertSame(0, $resolved->unavailable);
         $this->assertSame([], $counting->findManyCalls);
     }
 
