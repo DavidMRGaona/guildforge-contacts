@@ -39,6 +39,8 @@ return [
     'sections' => [
         'data' => 'Datos de la organización',
         'contact' => 'Cómo contactar',
+        'people' => 'Personas de contacto',
+        'people_description' => 'Opcional. Añade a quien atiende a la asociación en esta organización; después se gestionan en la pestaña «Personas de contacto» de su ficha.',
     ],
 
     'fields' => [
