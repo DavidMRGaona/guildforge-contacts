@@ -173,4 +173,18 @@ return [
             'empty_state_description' => 'Anota aquí lo que se acuerde con esta organización y cuándo conviene revisarlo.',
         ],
     ],
+
+    'agreement_review' => [
+        'section' => 'Contactos',
+        'label' => 'Revisión de acuerdos',
+        'description' => 'Aviso cuando llega la fecha de revisión de un acuerdo, para quien lo gestiona.',
+        'notice' => 'Toca revisar el acuerdo «:agreement» con :organization (:date)',
+        'mail' => [
+            'subject' => 'Toca revisar el acuerdo «:agreement»',
+            'greeting' => 'Hola, :name',
+            'body' => 'El acuerdo «:agreement» con :organization llegó a su fecha de revisión (:date).',
+            'hint' => 'Revísalo y, si sigue en marcha, pon una nueva fecha de revisión: es la forma de decir que ya lo has mirado.',
+            'action' => 'Ver el acuerdo',
+        ],
+    ],
 ];
