@@ -17,6 +17,19 @@ class EditAgreement extends EditRecord
         return __('contacts::contacts.pages.edit_agreement');
     }
 
+    /**
+     * Never moves the agreement to another organization, whatever the submitted state says.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        unset($data['organization_id']);
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -9,6 +9,7 @@ use App\Filament\Support\PanelNavigationGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Modules\Contacts\Filament\RelationManagers\LinksRelationManager;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\CreateAgreement;
 use Modules\Contacts\Filament\Resources\AgreementResource\Pages\EditAgreement;
@@ -65,6 +66,9 @@ class AgreementResource extends BaseResource
                     ->searchable()
                     ->preload()
                     ->native(false)
+                    // History entries and links hang from the organization: it is fixed once the agreement exists
+                    ->disabled(fn (?Model $record): bool => $record instanceof AgreementModel)
+                    ->dehydrated(fn (?Model $record): bool => ! $record instanceof AgreementModel)
                     ->columnSpanFull(),
                 ...AgreementTable::fields(),
             ])
